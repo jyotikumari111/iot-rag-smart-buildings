@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: iot-rag-smart-buildings
+    env: python
+    plan: free
+    rootDirectory: ""         # Ensure it's root
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "streamlit run smart-building-rag/services/ui/Streamlit_app.py --server.port=$PORT --server.address=0.0.0.0"
