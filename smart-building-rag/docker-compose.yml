@@ -1,0 +1,49 @@
+version: "3.9"
+services:
+  timescaledb:
+    image: timescale/timescaledb-ha:pg16-latest
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-smart_building}
+    ports: ["5432:5432"]
+    volumes:
+      - tsdata:/var/lib/postgresql/data
+      - ./infra/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
+
+  chroma:
+    image: chromadb/chroma:latest
+    environment:
+      - IS_PERSISTENT=TRUE
+    ports: ["8000:8000"]
+    volumes:
+      - chromadata:/chroma
+
+  api:
+    build: ./services/api
+    env_file: .env
+    depends_on: [timescaledb, chroma]
+    ports: ["8001:8001"]
+    volumes:
+      - ./data:/app/data:rw
+
+  ui:
+    build: ./services/ui
+    env_file: .env
+    depends_on: [api]
+    ports: ["8501:8501"]
+
+  # Optional: telemetry simulator (pushes rows into DB directly for demo)
+  simulator:
+    image: python:3.11-slim
+    depends_on: [timescaledb]
+    volumes:
+      - ./services/simulator:/sim
+    working_dir: /sim
+    command: ["python", "produce_telemetry.py"]
+    environment:
+      PG_URL: ${PG_URL}
+
+volumes:
+  tsdata:
+  chromadata:
